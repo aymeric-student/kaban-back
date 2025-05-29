@@ -14,4 +14,5 @@ public class ColumnDto {
     private UUID ColumnId;
     private String columnId;
     private List<TasksDto> tasks;
+    private boolean status;
 }

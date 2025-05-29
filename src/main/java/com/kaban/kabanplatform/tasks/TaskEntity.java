@@ -28,4 +28,8 @@ public class TaskEntity {
 
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<SubTaskEntity> subTaskEntities = new ArrayList<>();
+
+    private String title;
+
+    private boolean status;
 }
