@@ -32,4 +32,21 @@ public interface BoardRepository extends JpaRepository<BoardEntity, UUID> {
      * Vérifie si un board existe par titre
      */
     boolean existsByTitle(String title);
+
+    /**
+     * Trouve un board avec ses colonnes ET leurs tâches (complet)
+     */
+    @Query("SELECT DISTINCT b FROM BoardEntity b " +
+            "LEFT JOIN FETCH b.columns c " +
+            "LEFT JOIN FETCH c.tasks " +
+            "WHERE b.boardId = :id")
+    Optional<BoardEntity> findByIdWithColumnsAndTasks(@Param("id") UUID id);
+
+    /**
+     * Trouve tous les boards avec leurs colonnes ET tâches (complet mais plus lourd)
+     */
+    @Query("SELECT DISTINCT b FROM BoardEntity b " +
+            "LEFT JOIN FETCH b.columns c " +
+            "LEFT JOIN FETCH c.tasks")
+    List<BoardEntity> findAllWithColumnsAndTasks();
 }

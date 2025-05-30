@@ -5,6 +5,7 @@ import com.kaban.kabanplatform.column.ColumnEntity;
 import com.kaban.kabanplatform.column.ColumnRepository;
 import com.kaban.kabanplatform.errors.global.BadRequestException;
 import com.kaban.kabanplatform.errors.global.NotFoundException;
+import com.kaban.kabanplatform.tasks.TasksDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -86,6 +87,51 @@ public class BoardService {
         }
 
         boardRepository.deleteById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public BoardDto getByIdWithTasks(UUID id) {
+        // Vérifier que le board existe
+        if (!boardRepository.existsById(id)) {
+            throw new NotFoundException("Board avec l'ID " + id + " introuvable");
+        }
+
+        // Récupérer directement les colonnes avec leurs tâches
+        List<ColumnEntity> columnsWithTasks = columnRepository.findByBoardBoardIdWithTasks(id);
+
+        if (columnsWithTasks.isEmpty()) {
+            BoardEntity board = boardRepository.findById(id).get();
+            return mapToDtoLight(board);
+        }
+
+        // Construire le DTO à partir des colonnes
+        BoardEntity board = columnsWithTasks.get(0).getBoard();
+
+        List<ColumnDto> columnDtos = columnsWithTasks.stream()
+                .map(column -> {
+                    List<TasksDto> tasks = column.getTasks() != null ?
+                            column.getTasks().stream()
+                                    .map(task -> TasksDto.builder()
+                                            .taskId(task.getTaskId())
+                                            .title(task.getTitle())
+                                            .subTasks(List.of())
+                                            .build())
+                                    .toList() : List.of();
+
+                    return ColumnDto.builder()
+                            .columnId(column.getColumnId())
+                            .title(column.getTitle())
+                            .boardId(board.getBoardId())
+                            .tasks(tasks)
+                            .build();
+                })
+                .toList();
+
+        return BoardDto.builder()
+                .boardId(board.getBoardId())
+                .title(board.getTitle())
+                .columns(columnDtos)
+                .build();
     }
 
     @Transactional(readOnly = true)

@@ -43,6 +43,16 @@ public class BoardController {
         return ResponseEntity.ok(board);
     }
 
+
+    /**
+     * 🔥 NOUVEAU - Récupère un board par son ID AVEC ses tâches (complet)
+     */
+    @GetMapping("/{id}/with-tasks")
+    public ResponseEntity<BoardDto> getBoardByIdWithTasks(@PathVariable UUID id) {
+        BoardDto board = boardService.getByIdWithTasks(id);
+        return ResponseEntity.ok(board);
+    }
+
     /**
      * Crée un nouveau board
      */
