@@ -96,72 +96,11 @@ public class BoardService {
         return BoardMapper.toDtoLight(updatedBoard);
     }
 
-    public void delete(UUID id) {
-        BoardEntity board = boardRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Board avec l'ID " + id + " introuvable"));
-
-        // Vérification que le board n'a pas de colonnes (protection des données)
-        long columnCount = columnRepository.countByBoardBoardId(id);
-        if (columnCount > 0) {
-            throw new BadRequestException("Impossible de supprimer le board car il contient des colonnes. " +
-                    "Veuillez d'abord supprimer toutes les colonnes.");
-        }
-
-        boardRepository.deleteById(id);
-    }
-
     @Transactional(readOnly = true)
     public long countColumnsByBoard(UUID boardId) {
         if (!boardRepository.existsById(boardId)) {
             throw new NotFoundException("Board avec l'ID " + boardId + " introuvable");
         }
         return columnRepository.countByBoardBoardId(boardId);
-    }
-
-    @Transactional(readOnly = true)
-    public List<BoardDto> searchBoardsByTitle(String title) {
-        if (title == null || title.isBlank()) {
-            throw new BadRequestException("Le terme de recherche ne peut pas être vide");
-        }
-        return boardRepository.findByTitleContainingIgnoreCase(title.trim()).stream()
-                .map(BoardMapper::toDtoLight)
-                .toList();
-    }
-
-    public BoardDto duplicate(UUID originalBoardId, String newTitle) {
-        // Récupérer le board original avec ses colonnes
-        BoardEntity originalBoard = boardRepository.findByIdWithColumns(originalBoardId)
-                .orElseThrow(() -> new NotFoundException("Board avec l'ID " + originalBoardId + " introuvable"));
-
-        // Définir le titre du nouveau board
-        String duplicatedTitle = (newTitle != null && !newTitle.isBlank())
-                ? newTitle.trim()
-                : originalBoard.getTitle() + " (Copie)";
-
-        // Vérifier l'unicité du nouveau titre
-        if (boardRepository.existsByTitle(duplicatedTitle)) {
-            throw new BadRequestException("Un board avec le titre '" + duplicatedTitle + "' existe déjà");
-        }
-
-        // Créer le nouveau board
-        BoardEntity duplicatedBoard = BoardEntity.builder()
-                .title(duplicatedTitle)
-                .build();
-
-        BoardEntity savedBoard = boardRepository.save(duplicatedBoard);
-
-        // Dupliquer les colonnes (sans les tâches)
-        if (originalBoard.getColumns() != null) {
-            originalBoard.getColumns().forEach(originalColumn -> {
-                ColumnEntity duplicatedColumn = ColumnEntity.builder()
-                        .title(originalColumn.getTitle())
-                        .board(savedBoard)
-                        .build();
-                columnRepository.save(duplicatedColumn);
-            });
-        }
-
-        // Retourner le board dupliqué avec ses nouvelles colonnes
-        return getById(savedBoard.getBoardId());
     }
 }

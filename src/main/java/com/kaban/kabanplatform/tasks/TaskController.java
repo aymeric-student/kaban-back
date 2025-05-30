@@ -9,78 +9,88 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/tasks")
+@RequestMapping("/api/boards")
 @RequiredArgsConstructor
 public class TaskController {
 
     private final TaskService taskService;
 
+    // ==================== ROUTES SPÉCIFIQUES À LA COLONNE ====================
+
     /**
-     * Récupère toutes les tâches
+     * Récupère toutes les tâches d'une colonne spécifique
+     * GET /api/boards/{boardId}/columns/{columnId}/tasks
      */
-    @GetMapping
-    public ResponseEntity<List<TasksDto>> getAllTasks() {
-        List<TasksDto> tasks = taskService.getAll();
+    @GetMapping("/{boardId}/columns/{columnId}/tasks")
+    public ResponseEntity<List<TasksDto>> getTasksByColumn(
+            @PathVariable UUID boardId,
+            @PathVariable UUID columnId) {
+        List<TasksDto> tasks = taskService.getTasksByColumn(boardId, columnId);
         return ResponseEntity.ok(tasks);
     }
 
     /**
-     * Récupère une tâche par son ID
+     * Récupère une tâche spécifique d'une colonne
+     * GET /api/boards/{boardId}/columns/{columnId}/tasks/{taskId}
      */
-    @GetMapping("/{id}")
-    public ResponseEntity<TasksDto> getTaskById(@PathVariable UUID id) {
-        TasksDto task = taskService.getById(id);
+    @GetMapping("/{boardId}/columns/{columnId}/tasks/{taskId}")
+    public ResponseEntity<TasksDto> getTaskByColumnAndId(
+            @PathVariable UUID boardId,
+            @PathVariable UUID columnId,
+            @PathVariable UUID taskId) {
+        TasksDto task = taskService.getTaskByColumnAndId(boardId, columnId, taskId);
         return ResponseEntity.ok(task);
     }
 
     /**
-     * Récupère toutes les tâches d'une colonne
+     * Crée une nouvelle tâche dans une colonne spécifique
+     * POST /api/boards/{boardId}/columns/{columnId}/tasks
      */
-    @GetMapping("/column/{columnId}")
-    public ResponseEntity<List<TasksDto>> getTasksByColumn(@PathVariable UUID columnId) {
-        List<TasksDto> tasks = taskService.getTasksByColumn(columnId);
-        return ResponseEntity.ok(tasks);
-    }
-
-    /**
-     * Crée une nouvelle tâche dans une colonne
-     */
-    @PostMapping("/column/{columnId}")
-    public ResponseEntity<TasksDto> createTask(
+    @PostMapping("/{boardId}/columns/{columnId}/tasks")
+    public ResponseEntity<TasksDto> createTaskInColumn(
+            @PathVariable UUID boardId,
             @PathVariable UUID columnId,
             @RequestBody TasksDto taskDto) {
-        TasksDto createdTask = taskService.create(columnId, taskDto);
+        TasksDto createdTask = taskService.create(boardId, columnId, taskDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdTask);
     }
 
     /**
-     * Met à jour une tâche existante
+     * Met à jour une tâche dans une colonne spécifique
+     * PUT /api/boards/{boardId}/columns/{columnId}/tasks/{taskId}
      */
-    @PutMapping("/{id}")
-    public ResponseEntity<TasksDto> updateTask(
-            @PathVariable UUID id,
+    @PutMapping("/{boardId}/columns/{columnId}/tasks/{taskId}")
+    public ResponseEntity<TasksDto> updateTaskInColumn(
+            @PathVariable UUID boardId,
+            @PathVariable UUID columnId,
+            @PathVariable UUID taskId,
             @RequestBody TasksDto taskDto) {
-        TasksDto updatedTask = taskService.update(id, taskDto);
+        TasksDto updatedTask = taskService.updateTaskInColumn(boardId, columnId, taskId, taskDto);
         return ResponseEntity.ok(updatedTask);
     }
 
     /**
-     * Déplace une tâche vers une autre colonne
+     * Supprime une tâche d'une colonne spécifique
+     * DELETE /api/boards/{boardId}/columns/{columnId}/tasks/{taskId}
      */
-    @PutMapping("/{id}/move-to-column/{columnId}")
-    public ResponseEntity<TasksDto> moveTaskToColumn(
-            @PathVariable UUID id,
-            @PathVariable UUID columnId) {
-        TasksDto movedTask = taskService.moveToColumn(id, columnId);
-        return ResponseEntity.ok(movedTask);
+    @DeleteMapping("/{boardId}/columns/{columnId}/tasks/{taskId}")
+    public ResponseEntity<Void> deleteTaskFromColumn(
+            @PathVariable UUID boardId,
+            @PathVariable UUID columnId,
+            @PathVariable UUID taskId) {
+        taskService.deleteTaskFromColumn(boardId, columnId, taskId);
+        return ResponseEntity.noContent().build();
     }
 
+    // ==================== ROUTES SPÉCIFIQUES AU BOARD (toutes colonnes) ====================
+
     /**
-     * Supprime une tâche
+     * Récupère toutes les tâches d'un board (toutes colonnes)
+     * GET /api/boards/{boardId}/tasks
      */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTask(@PathVariable UUID id) {
-        taskService.delete(id);
-        return ResponseEntity.noContent().build();
+    @GetMapping("/{boardId}/tasks")
+    public ResponseEntity<List<TasksDto>> getTasksByBoard(@PathVariable UUID boardId) {
+        List<TasksDto> tasks = taskService.getTasksByBoard(boardId);
+        return ResponseEntity.ok(tasks);
     }
 }

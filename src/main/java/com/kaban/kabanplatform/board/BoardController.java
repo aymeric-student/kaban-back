@@ -1,4 +1,3 @@
-// BoardController.java
 package com.kaban.kabanplatform.board;
 
 import lombok.RequiredArgsConstructor;
@@ -18,6 +17,7 @@ public class BoardController {
 
     /**
      * Récupère tous les boards
+     * GET /api/boards
      */
     @GetMapping
     public ResponseEntity<List<BoardDto>> getAllBoards() {
@@ -27,6 +27,7 @@ public class BoardController {
 
     /**
      * Récupère un board par son ID avec ses colonnes
+     * GET /api/boards/{id}
      */
     @GetMapping("/{id}")
     public ResponseEntity<BoardDto> getBoardById(@PathVariable UUID id) {
@@ -36,6 +37,7 @@ public class BoardController {
 
     /**
      * Récupère un board par son ID sans ses colonnes (léger)
+     * GET /api/boards/{id}/light
      */
     @GetMapping("/{id}/light")
     public ResponseEntity<BoardDto> getBoardByIdLight(@PathVariable UUID id) {
@@ -43,11 +45,11 @@ public class BoardController {
         return ResponseEntity.ok(board);
     }
 
-
     /**
-     * 🔥 NOUVEAU - Récupère un board par son ID AVEC ses tâches (complet)
+     * Récupère un board par son ID AVEC ses tâches (complet)
+     * GET /api/boards/{id}/with-tasks
      */
-    @GetMapping("/{id}/with-tasks")
+    @GetMapping("/{id}/columns/with-tasks")
     public ResponseEntity<BoardDto> getBoardByIdWithTasks(@PathVariable UUID id) {
         BoardDto board = boardService.getByIdWithTasks(id);
         return ResponseEntity.ok(board);
@@ -55,6 +57,7 @@ public class BoardController {
 
     /**
      * Crée un nouveau board
+     * POST /api/boards
      */
     @PostMapping
     public ResponseEntity<BoardDto> createBoard(@RequestBody BoardDto boardDto) {
@@ -64,6 +67,7 @@ public class BoardController {
 
     /**
      * Met à jour un board existant
+     * PUT /api/boards/{id}
      */
     @PutMapping("/{id}")
     public ResponseEntity<BoardDto> updateBoard(
@@ -74,40 +78,12 @@ public class BoardController {
     }
 
     /**
-     * Supprime un board
-     */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteBoard(@PathVariable UUID id) {
-        boardService.delete(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    /**
      * Compte le nombre de colonnes dans un board
+     * GET /api/boards/{id}/columns/count
      */
     @GetMapping("/{id}/columns/count")
     public ResponseEntity<Long> countColumnsByBoard(@PathVariable UUID id) {
         long count = boardService.countColumnsByBoard(id);
         return ResponseEntity.ok(count);
-    }
-
-    /**
-     * Recherche des boards par titre
-     */
-    @GetMapping("/search")
-    public ResponseEntity<List<BoardDto>> searchBoardsByTitle(@RequestParam String title) {
-        List<BoardDto> boards = boardService.searchBoardsByTitle(title);
-        return ResponseEntity.ok(boards);
-    }
-
-    /**
-     * Duplique un board (avec ses colonnes mais sans les tâches)
-     */
-    @PostMapping("/{id}/duplicate")
-    public ResponseEntity<BoardDto> duplicateBoard(
-            @PathVariable UUID id,
-            @RequestParam(required = false) String newTitle) {
-        BoardDto duplicatedBoard = boardService.duplicate(id, newTitle);
-        return ResponseEntity.status(HttpStatus.CREATED).body(duplicatedBoard);
     }
 }

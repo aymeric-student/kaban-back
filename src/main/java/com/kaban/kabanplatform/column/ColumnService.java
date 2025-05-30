@@ -20,13 +20,6 @@ public class ColumnService {
     private final BoardRepository boardRepository;
 
     @Transactional(readOnly = true)
-    public List<ColumnDto> getAll() {
-        return columnRepository.findAll().stream()
-                .map(ColumnMapper::toDtoWithoutTasks) // Version légère par défaut
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
     public ColumnDto getById(UUID id) {
         ColumnEntity column = columnRepository.findByIdWithTasks(id)
                 .orElseThrow(() -> new NotFoundException("Colonne avec l'ID " + id + " introuvable"));
@@ -89,28 +82,6 @@ public class ColumnService {
         return ColumnMapper.toDtoWithoutTasks(updatedColumn);
     }
 
-    public ColumnDto moveToBoard(UUID columnId, UUID newBoardId) {
-        ColumnEntity column = columnRepository.findById(columnId)
-                .orElseThrow(() -> new NotFoundException("Colonne avec l'ID " + columnId + " introuvable"));
-
-        BoardEntity newBoard = boardRepository.findById(newBoardId)
-                .orElseThrow(() -> new NotFoundException("Board avec l'ID " + newBoardId + " introuvable"));
-
-        // Vérification que la colonne n'est pas déjà dans ce board
-        if (column.getBoard().getBoardId().equals(newBoardId)) {
-            throw new BadRequestException("La colonne est déjà dans ce board");
-        }
-
-        // Vérification de l'unicité du titre dans le nouveau board
-        if (columnRepository.findByTitleAndBoardBoardId(column.getTitle(), newBoardId).isPresent()) {
-            throw new BadRequestException("Une colonne avec ce titre existe déjà dans le board de destination");
-        }
-
-        column.setBoard(newBoard);
-        ColumnEntity updatedColumn = columnRepository.save(column);
-        return ColumnMapper.toDtoWithoutTasks(updatedColumn);
-    }
-
     public void delete(UUID id) {
         ColumnEntity column = columnRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Colonne avec l'ID " + id + " introuvable"));
@@ -130,15 +101,5 @@ public class ColumnService {
             throw new NotFoundException("Board avec l'ID " + boardId + " introuvable");
         }
         return columnRepository.countByBoardBoardId(boardId);
-    }
-
-    @Transactional(readOnly = true)
-    public List<ColumnDto> searchColumnsByTitle(String title) {
-        if (title == null || title.isBlank()) {
-            throw new BadRequestException("Le terme de recherche ne peut pas être vide");
-        }
-        return columnRepository.findByTitleContainingIgnoreCase(title.trim()).stream()
-                .map(ColumnMapper::toDtoWithoutTasks) // Version légère pour la recherche
-                .toList();
     }
 }
