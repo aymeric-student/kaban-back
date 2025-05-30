@@ -1,11 +1,10 @@
 package com.kaban.kabanplatform.board;
 
-import com.kaban.kabanplatform.column.ColumnDto;
 import com.kaban.kabanplatform.column.ColumnEntity;
 import com.kaban.kabanplatform.column.ColumnRepository;
+import com.kaban.kabanplatform.column.ColumnMapper;
 import com.kaban.kabanplatform.errors.global.BadRequestException;
 import com.kaban.kabanplatform.errors.global.NotFoundException;
-import com.kaban.kabanplatform.tasks.TasksDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +23,7 @@ public class BoardService {
     @Transactional(readOnly = true)
     public List<BoardDto> getAll() {
         return boardRepository.findAllWithColumns().stream()
-                .map(this::mapToDto)
+                .map(BoardMapper::toDto)
                 .toList();
     }
 
@@ -32,14 +31,36 @@ public class BoardService {
     public BoardDto getById(UUID id) {
         BoardEntity board = boardRepository.findByIdWithColumns(id)
                 .orElseThrow(() -> new NotFoundException("Board avec l'ID " + id + " introuvable"));
-        return mapToDto(board);
+        return BoardMapper.toDto(board);
     }
 
     @Transactional(readOnly = true)
     public BoardDto getByIdLight(UUID id) {
         BoardEntity board = boardRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Board avec l'ID " + id + " introuvable"));
-        return mapToDtoLight(board);
+        return BoardMapper.toDtoLight(board);
+    }
+
+    @Transactional(readOnly = true)
+    public BoardDto getByIdWithTasks(UUID id) {
+        // Vérifier que le board existe
+        if (!boardRepository.existsById(id)) {
+            throw new NotFoundException("Board avec l'ID " + id + " introuvable");
+        }
+
+        // Récupérer directement les colonnes avec leurs tâches
+        List<ColumnEntity> columnsWithTasks = columnRepository.findByBoardBoardIdWithTasks(id);
+
+        if (columnsWithTasks.isEmpty()) {
+            BoardEntity board = boardRepository.findById(id).get();
+            return BoardMapper.toDtoLight(board);
+        }
+
+        // Construire le DTO à partir des colonnes en utilisant les mappers
+        BoardEntity board = columnsWithTasks.get(0).getBoard();
+        board.setColumns(columnsWithTasks); // Assigner les colonnes chargées
+
+        return BoardMapper.toDtoWithTasks(board);
     }
 
     public BoardDto create(BoardDto boardDto) {
@@ -58,7 +79,7 @@ public class BoardService {
                 .build();
 
         BoardEntity savedBoard = boardRepository.save(board);
-        return mapToDtoLight(savedBoard);
+        return BoardMapper.toDtoLight(savedBoard);
     }
 
     public BoardDto update(UUID id, BoardDto boardDto) {
@@ -72,7 +93,7 @@ public class BoardService {
 
         board.setTitle(boardDto.getTitle().trim());
         BoardEntity updatedBoard = boardRepository.save(board);
-        return mapToDtoLight(updatedBoard);
+        return BoardMapper.toDtoLight(updatedBoard);
     }
 
     public void delete(UUID id) {
@@ -90,51 +111,6 @@ public class BoardService {
     }
 
     @Transactional(readOnly = true)
-    public BoardDto getByIdWithTasks(UUID id) {
-        // Vérifier que le board existe
-        if (!boardRepository.existsById(id)) {
-            throw new NotFoundException("Board avec l'ID " + id + " introuvable");
-        }
-
-        // Récupérer directement les colonnes avec leurs tâches
-        List<ColumnEntity> columnsWithTasks = columnRepository.findByBoardBoardIdWithTasks(id);
-
-        if (columnsWithTasks.isEmpty()) {
-            BoardEntity board = boardRepository.findById(id).get();
-            return mapToDtoLight(board);
-        }
-
-        // Construire le DTO à partir des colonnes
-        BoardEntity board = columnsWithTasks.get(0).getBoard();
-
-        List<ColumnDto> columnDtos = columnsWithTasks.stream()
-                .map(column -> {
-                    List<TasksDto> tasks = column.getTasks() != null ?
-                            column.getTasks().stream()
-                                    .map(task -> TasksDto.builder()
-                                            .taskId(task.getTaskId())
-                                            .title(task.getTitle())
-                                            .subTasks(List.of())
-                                            .build())
-                                    .toList() : List.of();
-
-                    return ColumnDto.builder()
-                            .columnId(column.getColumnId())
-                            .title(column.getTitle())
-                            .boardId(board.getBoardId())
-                            .tasks(tasks)
-                            .build();
-                })
-                .toList();
-
-        return BoardDto.builder()
-                .boardId(board.getBoardId())
-                .title(board.getTitle())
-                .columns(columnDtos)
-                .build();
-    }
-
-    @Transactional(readOnly = true)
     public long countColumnsByBoard(UUID boardId) {
         if (!boardRepository.existsById(boardId)) {
             throw new NotFoundException("Board avec l'ID " + boardId + " introuvable");
@@ -148,7 +124,7 @@ public class BoardService {
             throw new BadRequestException("Le terme de recherche ne peut pas être vide");
         }
         return boardRepository.findByTitleContainingIgnoreCase(title.trim()).stream()
-                .map(this::mapToDtoLight)
+                .map(BoardMapper::toDtoLight)
                 .toList();
     }
 
@@ -187,35 +163,5 @@ public class BoardService {
 
         // Retourner le board dupliqué avec ses nouvelles colonnes
         return getById(savedBoard.getBoardId());
-    }
-
-    private BoardDto mapToDto(BoardEntity board) {
-        List<ColumnDto> columns = List.of(); // Par défaut, liste vide
-
-        // Si les colonnes sont chargées, les mapper
-        if (board.getColumns() != null) {
-            columns = board.getColumns().stream()
-                    .map(column -> ColumnDto.builder()
-                            .columnId(column.getColumnId())
-                            .title(column.getTitle())
-                            .boardId(board.getBoardId())
-                            .tasks(List.of()) // Sans les tâches pour éviter le chargement lourd
-                            .build())
-                    .toList();
-        }
-
-        return BoardDto.builder()
-                .boardId(board.getBoardId())
-                .title(board.getTitle())
-                .columns(columns)
-                .build();
-    }
-
-    private BoardDto mapToDtoLight(BoardEntity board) {
-        return BoardDto.builder()
-                .boardId(board.getBoardId())
-                .title(board.getTitle())
-                .columns(List.of()) // Liste vide pour version légère
-                .build();
     }
 }

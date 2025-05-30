@@ -4,7 +4,6 @@ import com.kaban.kabanplatform.board.BoardEntity;
 import com.kaban.kabanplatform.board.BoardRepository;
 import com.kaban.kabanplatform.errors.global.BadRequestException;
 import com.kaban.kabanplatform.errors.global.NotFoundException;
-import com.kaban.kabanplatform.tasks.TasksDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,7 +22,7 @@ public class ColumnService {
     @Transactional(readOnly = true)
     public List<ColumnDto> getAll() {
         return columnRepository.findAll().stream()
-                .map(this::mapToDto)
+                .map(ColumnMapper::toDtoWithoutTasks) // Version légère par défaut
                 .toList();
     }
 
@@ -31,7 +30,7 @@ public class ColumnService {
     public ColumnDto getById(UUID id) {
         ColumnEntity column = columnRepository.findByIdWithTasks(id)
                 .orElseThrow(() -> new NotFoundException("Colonne avec l'ID " + id + " introuvable"));
-        return mapToDto(column);
+        return ColumnMapper.toDtoWithTasks(column);
     }
 
     @Transactional(readOnly = true)
@@ -40,7 +39,7 @@ public class ColumnService {
             throw new NotFoundException("Board avec l'ID " + boardId + " introuvable");
         }
         return columnRepository.findByBoardBoardIdWithTasks(boardId).stream()
-                .map(this::mapToDto)
+                .map(ColumnMapper::toDtoWithTasks)
                 .toList();
     }
 
@@ -65,7 +64,7 @@ public class ColumnService {
                 .build();
 
         ColumnEntity savedColumn = columnRepository.save(column);
-        return mapToDto(savedColumn);
+        return ColumnMapper.toDtoWithoutTasks(savedColumn);
     }
 
     public ColumnDto update(UUID id, ColumnDto columnDto) {
@@ -87,7 +86,7 @@ public class ColumnService {
 
         column.setTitle(columnDto.getTitle().trim());
         ColumnEntity updatedColumn = columnRepository.save(column);
-        return mapToDto(updatedColumn);
+        return ColumnMapper.toDtoWithoutTasks(updatedColumn);
     }
 
     public ColumnDto moveToBoard(UUID columnId, UUID newBoardId) {
@@ -109,7 +108,7 @@ public class ColumnService {
 
         column.setBoard(newBoard);
         ColumnEntity updatedColumn = columnRepository.save(column);
-        return mapToDto(updatedColumn);
+        return ColumnMapper.toDtoWithoutTasks(updatedColumn);
     }
 
     public void delete(UUID id) {
@@ -139,28 +138,7 @@ public class ColumnService {
             throw new BadRequestException("Le terme de recherche ne peut pas être vide");
         }
         return columnRepository.findByTitleContainingIgnoreCase(title.trim()).stream()
-                .map(this::mapToDto)
+                .map(ColumnMapper::toDtoWithoutTasks) // Version légère pour la recherche
                 .toList();
-    }
-
-    private ColumnDto mapToDto(ColumnEntity column) {
-        List<TasksDto> tasks = List.of(); // Par défaut, liste vide
-
-        // Si les tâches sont chargées, les mapper
-        if (column.getTasks() != null) {
-            tasks = column.getTasks().stream()
-                    .map(task -> TasksDto.builder()
-                            .taskId(task.getTaskId())
-                            .title(task.getTitle())
-                            .build())
-                    .toList();
-        }
-
-        return ColumnDto.builder()
-                .columnId(column.getColumnId())      // UUID → UUID ✅
-                .title(column.getTitle())            // String → String ✅
-                .boardId(column.getBoard().getBoardId()) // UUID → UUID ✅
-                .tasks(tasks)                        // List<TasksDto> → List<TasksDto> ✅
-                .build();
     }
 }

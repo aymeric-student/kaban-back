@@ -3,7 +3,6 @@ package com.kaban.kabanplatform.tasks;
 import com.kaban.kabanplatform.column.ColumnEntity;
 import com.kaban.kabanplatform.column.ColumnRepository;
 import com.kaban.kabanplatform.errors.global.NotFoundException;
-import com.kaban.kabanplatform.subtasks.SubTaskMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,7 +21,7 @@ public class TaskService {
     @Transactional(readOnly = true)
     public List<TasksDto> getAll() {
         return taskRepository.findAll().stream()
-                .map(this::mapToDto)
+                .map(TaskMapper::toDto)
                 .toList();
     }
 
@@ -30,7 +29,7 @@ public class TaskService {
     public TasksDto getById(UUID id) {
         TaskEntity task = taskRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Tâche avec l'ID " + id + " introuvable"));
-        return mapToDto(task);
+        return TaskMapper.toDto(task);
     }
 
     public TasksDto create(UUID columnId, TasksDto dto) {
@@ -47,7 +46,7 @@ public class TaskService {
                 .build();
 
         TaskEntity savedTask = taskRepository.save(task);
-        return mapToDto(savedTask);
+        return TaskMapper.toDto(savedTask);
     }
 
     public TasksDto update(UUID id, TasksDto dto) {
@@ -61,7 +60,7 @@ public class TaskService {
         task.setTitle(dto.getTitle());
 
         TaskEntity updatedTask = taskRepository.save(task);
-        return mapToDto(updatedTask);
+        return TaskMapper.toDto(updatedTask);
     }
 
     public TasksDto moveToColumn(UUID taskId, UUID newColumnId) {
@@ -73,7 +72,7 @@ public class TaskService {
 
         task.setColumn(newColumn);
         TaskEntity updatedTask = taskRepository.save(task);
-        return mapToDto(updatedTask);
+        return TaskMapper.toDto(updatedTask);
     }
 
     public void delete(UUID id) {
@@ -86,18 +85,7 @@ public class TaskService {
     @Transactional(readOnly = true)
     public List<TasksDto> getTasksByColumn(UUID columnId) {
         return taskRepository.findByColumnColumnId(columnId).stream()
-                .map(this::mapToDto)
+                .map(TaskMapper::toDto)
                 .toList();
-    }
-
-    private TasksDto mapToDto(TaskEntity task) {
-        return TasksDto.builder()
-                .taskId(task.getTaskId())
-                .title(task.getTitle())
-                .subTasks(task.getSubTaskEntities() != null ?
-                        task.getSubTaskEntities().stream()
-                                .map(SubTaskMapper::toDto)
-                                .toList() : List.of())
-                .build();
     }
 }
