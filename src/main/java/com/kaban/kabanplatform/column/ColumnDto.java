@@ -11,8 +11,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ColumnDto {
-    private UUID ColumnId;
-    private String columnId;
+    private UUID columnId;
     private List<TasksDto> tasks;
-    private boolean status;
+    private String title;
+    private UUID boardId;
 }
